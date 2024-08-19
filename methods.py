@@ -8,6 +8,7 @@ from sklearn.metrics import normalized_mutual_info_score
 from tqdm import tqdm
 import multiprocessing
 from time import time
+import pickle
 
 
 # =====================================================================
@@ -164,7 +165,7 @@ def corruptAdjacencyMatrix(A, p, mode):
 #                About the Hamiltonian and Sampling
 # =====================================================================
 
-def hamiltonian(A_obs, groups, offset):
+def hamiltonian(A_obs, groups):
     """
     Compute the Hamiltonian of the system
     """
@@ -180,10 +181,10 @@ def hamiltonian(A_obs, groups, offset):
         for g1 in range(g2+1):
             H += h(A_obs, groups, g1, g2)
     
-    return H - offset
+    return H
 
 
-def singleStep(groups, H, A, offset):
+def singleStep(groups, H, A):
     """
     Perform a single step of the Metropolis-Hastings algorithm
     """
@@ -197,7 +198,7 @@ def singleStep(groups, H, A, offset):
     groups_prop = swap(groups, i, g_prop)
     
     # Compute the Hamiltonian of the new configuration
-    H_prop = hamiltonian(A, groups_prop, offset)
+    H_prop = hamiltonian(A, groups_prop)
 
     # Acceptance probability
     if H_prop <= H:
@@ -212,20 +213,21 @@ def singleStep(groups, H, A, offset):
     return groups, H
 
 
-def samplingBranch(A, groups, n_samples, delay, offset, seed, return_H=False):
+def samplingBranch(A, groups, n_samples, delay, seed, return_H=False):
     """
     Sampling algorithm (at equilibrium) to parallelize the computation
     """
     np.random.seed(seed)
     
+
     partitions_set = []
     hamiltonians_list = []
 
-    H = hamiltonian(A, groups, offset)
+    H = hamiltonian(A, groups)
 
     for k in range(n_samples):
         for _ in range(delay):
-            groups, H = singleStep(groups, H, A, offset)
+            groups, H = singleStep(groups, H, A)
         partitions_set.append(groups)
         hamiltonians_list.append(H)
 
@@ -235,7 +237,7 @@ def samplingBranch(A, groups, n_samples, delay, offset, seed, return_H=False):
         return partitions_set
     
 
-def parallelPartitionsSet(A, groups_init, n_samples, delay, offset, n_cores=-1, return_H=True):
+def parallelPartitionsSet(A, groups_init, n_samples, delay, n_cores=-1, return_H=True):
     """
     Get the set of partitions after the transient (at equilibrium)
     """
@@ -248,7 +250,7 @@ def parallelPartitionsSet(A, groups_init, n_samples, delay, offset, n_cores=-1, 
     #     print("Warning: n_samples is not a multiple of n_cores, computing ", n_samples_per_core*n_cores, " samples instead.")
 
     seeds = np.random.randint(0, 2**32-1, n_cores) # Random seeds to avoid the same partitions
-    input = [(A, groups_init, n_samples_per_core, delay, offset, seeds[i], return_H) for i in range(n_cores)]
+    input = [(A, groups_init, n_samples_per_core, delay, seeds[i], return_H) for i in range(n_cores)]
 
     with multiprocessing.Pool(processes=n_cores) as pool:
         results = pool.starmap(samplingBranch, input)
@@ -262,7 +264,7 @@ def parallelPartitionsSet(A, groups_init, n_samples, delay, offset, n_cores=-1, 
         return partitions_set
     
 
-def generatePartitionsSet(A, n_samples, delay, transient, offset=250, n_cores=-1, return_H=True):
+def generatePartitionsSet(A, n_samples, delay, transient, n_cores=-1, return_H=True):
     """
     Generate the set of partitions from the adjacency matrix A
     """
@@ -276,11 +278,12 @@ def generatePartitionsSet(A, n_samples, delay, transient, offset=250, n_cores=-1
         groups[g].append(i)
 
     # Transient
-    H = hamiltonian(A, groups, offset)
+    H = hamiltonian(A, groups)
     for _ in range(transient):
-        groups, H = singleStep(groups, H, A, offset)
+        groups, H = singleStep(groups, H, A)
     
-    return parallelPartitionsSet(A, groups, n_samples, delay, offset, n_cores, return_H)
+    return parallelPartitionsSet(A, groups, n_samples, delay, n_cores, return_H)
+
 
 def getTimeScales(A_obs, max_iter = 1e3, trials=5):
     """
@@ -298,17 +301,17 @@ def getTimeScales(A_obs, max_iter = 1e3, trials=5):
 
         # Transient
         transient = np.zeros(max_iter+1)
-        H = hamiltonian(A_obs, groups, offset=0)
+        H = hamiltonian(A_obs, groups)
         transient[0] = H
         for k in range(max_iter):
-            groups, H = singleStep(groups, H, A_obs, offset=0)
+            groups, H = singleStep(groups, H, A_obs)
             transient[k+1] = H
 
         # NMI at equilibrium
         belongs_to = arrayGroups(groups)
         nmi = np.zeros(max_iter)
         for k in range(max_iter):
-            groups, H = singleStep(groups, H, A_obs, offset=0)
+            groups, H = singleStep(groups, H, A_obs)
             nmi[k] = normalized_mutual_info_score(belongs_to, arrayGroups(groups))
 
 
@@ -338,7 +341,7 @@ def getTimeScales(A_obs, max_iter = 1e3, trials=5):
 #                About Reliability and Performance
 # =====================================================================
 
-def singleLinkReliability(A, groups, i, j, H, return_H=False):
+def singleLinkReliability(A, groups, i, j, offset, H=None, return_H=False):
     """
     Reliability of a given link for a particular configuration
     """
@@ -348,25 +351,25 @@ def singleLinkReliability(A, groups, i, j, H, return_H=False):
     r = maxBetween(groups, g_i, g_j)
     l = linksBetween(A, groups, g_i, g_j)
 
-    # if H is None: H = hamiltonian(A, groups) # Possibly to save computation
+    if H is None: H = hamiltonian(A, groups) # Possibly to save computation
 
     if return_H:
-        return (l + 1)*np.exp(-np.float128(H))/(r + 2), H
+        return (l + 1)*np.exp(-np.float128(H - offset))/(r + 2), H
     else:
-        return (l + 1)*np.exp(-np.float128(H))/(r + 2)
+        return (l + 1)*np.exp(-np.float128(H - offset))/(r + 2)
     
 
-def linkReliabilityEntry(A, partitions_set, i, j, hamiltionian_list):
+def linkReliabilityEntry(A, partitions_set, i, j, hamiltionian_list, offset):
     """
     Helper function to parallelize the computation of the link reliability matrix 
     """
     l_r = 0
     for k in range(len(partitions_set)):
-        l_r += singleLinkReliability(A, partitions_set[k], i, j, hamiltionian_list[k])
+        l_r += singleLinkReliability(A, partitions_set[k], i, j, offset, hamiltionian_list[k])
     return (i, j), l_r
 
 
-def computeLinkReliabilityMatrix(A, partitions_set, hamiltionian_list=None, n_cores=-1):
+def computeLinkReliabilityMatrix(A, partitions_set, hamiltionian_list=None, offset=250, n_cores=-1):
     """
     Compute the link reliability matrix for a given configuration
     """
@@ -381,7 +384,7 @@ def computeLinkReliabilityMatrix(A, partitions_set, hamiltionian_list=None, n_co
         
     if hamiltionian_list is not None:        
         # Parallel computation
-        input = [(A, partitions_set, i, j, hamiltionian_list) for i in range(N) for j in range(i, N)]
+        input = [(A, partitions_set, i, j, hamiltionian_list, offset) for i in range(N) for j in range(i, N)]
         with multiprocessing.Pool(processes=n_cores) as pool:
             results = pool.starmap(linkReliabilityEntry, input)
 
@@ -400,7 +403,7 @@ def computeLinkReliabilityMatrix(A, partitions_set, hamiltionian_list=None, n_co
         for i in range(N):
             for j in range(i, N):
                 for k in range(len(partitions_set)):
-                    l_r, H = singleLinkReliability(A, partitions_set[k], i, j, return_H=True)
+                    l_r, H = singleLinkReliability(A, partitions_set[k], i, j, offset, return_H=True)
                     link_reliability[i, j] += l_r
                     hamiltionian_list.append(H)
 
@@ -408,7 +411,7 @@ def computeLinkReliabilityMatrix(A, partitions_set, hamiltionian_list=None, n_co
     link_reliability = link_reliability + link_reliability.T - np.diag(np.diag(link_reliability))
 
     # Compute the partition function
-    Z = np.sum(np.exp(-np.array(hamiltionian_list, dtype=np.float128)), dtype=np.float128)
+    Z = np.sum(np.exp(-np.array(hamiltionian_list, dtype=np.float128) + offset), dtype=np.float128)
 
     return link_reliability / Z
 
@@ -425,7 +428,7 @@ def sortLinkLists(links, not_links, link_reliability):
     return links, not_links
    
 
-def singleNetworkReliability(A, A_obs, groups, H, return_H=False):
+def singleNetworkReliability(A, A_obs, groups, offset, H=None, return_H=False):
     """
     Reliability of the network for a particular configuration
     """
@@ -441,14 +444,14 @@ def singleNetworkReliability(A, A_obs, groups, H, return_H=False):
 
         return np.log(t1) + np.log(t2)
 
-    #if H is None: H = hamiltonian(A_obs, groups)
+    if H is None: H = hamiltonian(A_obs, groups) # Using the observed network
 
     sum_h = 0
     for g2 in range(N):
         for g1 in range(g2+1):
             sum_h += exp_element(A, A_obs, groups, g1, g2)
           
-    n_r = np.exp(np.float128(sum_h - H + 234))
+    n_r = np.exp(np.float128(sum_h - H + offset))
 
     if return_H:
         return n_r, H
@@ -456,7 +459,7 @@ def singleNetworkReliability(A, A_obs, groups, H, return_H=False):
         return n_r
     
 
-def getNetworkReliability(A, A_obs, partitions_set, hamiltionian_list=None, n_cores=-1):
+def getNetworkReliability(A, A_obs, partitions_set, hamiltionian_list=None, offset=250, n_cores=-1):
     """
     Compute the network reliability
     """
@@ -470,7 +473,7 @@ def getNetworkReliability(A, A_obs, partitions_set, hamiltionian_list=None, n_co
 
     if hamiltionian_list is not None:
         # Parallel computation
-        input = [(A, A_obs, partitions_set[k], hamiltionian_list[k]) for k in range(len(partitions_set))]
+        input = [(A, A_obs, partitions_set[k], offset, hamiltionian_list[k]) for k in range(len(partitions_set))]
 
         with multiprocessing.Pool(processes=n_cores) as pool:
             results = pool.starmap(singleNetworkReliability, input)
@@ -484,11 +487,11 @@ def getNetworkReliability(A, A_obs, partitions_set, hamiltionian_list=None, n_co
     else:
         hamiltionian_list = []
         for k in range(len(partitions_set)):
-            n_r, H = singleNetworkReliability(A, A_obs, partitions_set[k], return_H=True)
+            n_r, H = singleNetworkReliability(A, A_obs, partitions_set[k], offset=offset, return_H=True)
             network_reliability += n_r
             hamiltionian_list.append(H)
 
-    Z = np.sum(np.exp(-np.array(hamiltionian_list, dtype=np.float128)), dtype=np.float128)
+    Z = np.sum(np.exp(-np.array(hamiltionian_list, dtype=np.float128) + offset), dtype=np.float128)
     
     return network_reliability / Z
 
@@ -509,9 +512,9 @@ def scoreMissing(A, A_obs, n_samples=1e4, delay=20, transient=500, offset=250, n
 
     # Link reliability matrix
     partitions_set, hamiltionian_list = generatePartitionsSet(A_obs, n_samples=n_samples, delay=delay,
-                                                              offset=offset, transient=transient, 
+                                                              transient=transient, 
                                                               n_cores=n_cores,return_H=True)
-    R_L = computeLinkReliabilityMatrix(A_obs, partitions_set, hamiltionian_list)
+    R_L = computeLinkReliabilityMatrix(A_obs, partitions_set, hamiltionian_list, offset=offset)
 
     # Pairwise comparison for AUC
     count = 0
@@ -543,9 +546,9 @@ def scoreSpurious(A, A_obs, n_samples=1e4, delay=20, transient=500, offset=250, 
 
     # Link reliability matrix
     partitions_set, hamiltionian_list = generatePartitionsSet(A_obs, n_samples=n_samples, delay=delay,
-                                                              transient=transient, offset=offset,
+                                                              transient=transient,
                                                               n_cores=n_cores, return_H=True)
-    R_L = computeLinkReliabilityMatrix(A_obs, partitions_set, hamiltionian_list)
+    R_L = computeLinkReliabilityMatrix(A_obs, partitions_set, hamiltionian_list, offset=offset)
 
     # Pairwise comparison for AUC
     count = 0
@@ -559,6 +562,120 @@ def scoreSpurious(A, A_obs, n_samples=1e4, delay=20, transient=500, offset=250, 
     score = count / (len(spurious) * len(true_positives))
     
     return score
+
+
+# =====================================================================
+#                About Network Reconstruction
+# =====================================================================
+
+def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=False, A=None):
+    """
+    Reconstruct the network from the observed adjacency matrix A_obs
+    """
+    if verbose: 
+        assert A is not None, "If verbose, the true adjacency matrix must be provided"
+
+    # Define the hyperparameters
+    hyper = (n_samples, delay, transient)
+
+    # Initialize the current adjacency matrix
+    A_cur = A_obs.copy()
+
+    if verbose: print("Starting network reconstruction...")
+    for j in range(30): # This is the maximum number of iterations
+        if verbose: print("Starting iteration ", j)
+
+        # Compute the network reliability and the link reliability matrix
+        R_N = getNetworkReliability(A_cur, A_obs, *generatePartitionsSet(A_obs, *hyper), offset=offset)
+        if verbose: print("Network reliability: ", R_N)
+        R_L = computeLinkReliabilityMatrix(A_cur, *generatePartitionsSet(A_cur, *hyper), offset=offset)
+        
+        # Sort the links (increasing R) and not links (decreasing R)
+        sorted_links, sorted_not_links = sortLinkLists(*getLinkLists(A_cur), R_L)
+        
+        # Iterate to reconstruct the network
+        num_iters = np.min([len(sorted_links), len(sorted_not_links)])
+        miss_update = 0
+        done_update = False
+        for k in range(num_iters):
+            # Choose a pair of link and not link in order
+            link, not_link = sorted_links[k], sorted_not_links[k]
+
+            # Define the proposed adjacency matrix
+            A_temp = A_cur.copy()
+            if verbose: missing_before, spurious_before = compareAdjacencyMatrices(A, A_temp)
+
+            # Swap the links
+            A_temp[link[0], link[1]] = 0
+            A_temp[link[1], link[0]] = 0
+            A_temp[not_link[0], not_link[1]] = 1
+            A_temp[not_link[1], not_link[0]] = 1
+
+            if verbose:
+                missing_after, spurious_after = compareAdjacencyMatrices(A, A_temp)
+                print("Proposed (missing, spurious): (", len(missing_before), ", ", len(spurious_before), ") -> (", len(missing_after), ", ", len(spurious_after), ")")
+
+            # Compute the network reliability with the new adjacency matrix
+            R_N_temp = getNetworkReliability(A_temp, A_obs, *generatePartitionsSet(A_obs, *hyper), offset=offset)
+            
+            # If the network reliability increases, update the adjacency matrix
+            if R_N_temp > R_N:
+                if verbose: print("Network accepted \n")
+                A_cur = A_temp
+                R_N = R_N_temp
+                miss_update = 0
+                done_update = True
+            else:
+                miss_update += 1
+                if verbose: print("Network rejected")
+                if miss_update > 4:
+                    break
+                
+        if not done_update:
+            if verbose: print("No further update possible")
+            break
+        
+    return A_cur
+
+
+def studyNetworkReconstructon(G, log_path, n_samples, delay, transient, offset, verbose=True):
+    """
+    Study the network reconstruction for different values of p
+    """ 
+    A = nx.adjacency_matrix(G).todense()
+    A = (A > 0).astype(int)
+
+    p_list = [0.3, 0.1, 0.2, 0.4, 0.5]
+    
+    results = {}
+    for p in p_list:
+        if verbose: print("Starting with p = ", p)
+
+        # Generate the observed adjacency matrix
+        A_obs = corruptAdjacencyMatrix(A, p=p, mode='both')
+        errors_obs = 2*len(compareAdjacencyMatrices(A, A_obs))
+        
+        # Reconstruct the network
+        start_time = time()
+        A_recon = networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose, A)
+        elapsed_time = time() - start_time
+        errors_recon = 2*len(compareAdjacencyMatrices(A, A_recon))
+
+        # Results
+        partial_results = {
+            "A_obs": A_obs,
+            "A_recon": A_recon,
+            "errors_obs": errors_obs,
+            "errors_recon": errors_recon,
+            "elapsed_time": elapsed_time
+        }
+        results[p] = partial_results
+
+    # Save the results as a pickle
+    with open(log_path, "wb") as file:
+        pickle.dump(results, file)
+
+    return results
 
 
 
