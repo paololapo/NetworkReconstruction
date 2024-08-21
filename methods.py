@@ -582,7 +582,7 @@ def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=Fa
     A_cur = A_obs.copy()
 
     if verbose: print("Starting network reconstruction...")
-    for j in range(30): # This is the maximum number of iterations
+    for j in range(5): # This is the maximum number of iterations
         if verbose: print("Starting iteration ", j)
 
         # Compute the network reliability and the link reliability matrix

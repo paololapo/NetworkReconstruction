@@ -28,7 +28,7 @@ G = nx.karate_club_graph().to_undirected()
 print("\n Karate Club Network")
 studyNetworkReconstructon(G, log_path="./logs/karate_club.pkl",
                           n_samples=1e4, 
-                          delay=150, 
+                          delay=400, 
                           transient=500, 
                           offset=600, 
                           verbose=True)
@@ -37,7 +37,7 @@ studyNetworkReconstructon(G, log_path="./logs/karate_club.pkl",
 G = nx.read_gml("dolphins.gml").to_undirected()
 print("\n Dolphins Network")
 studyNetworkReconstructon(G, log_path="./logs/dolphins.pkl", 
-                          n_samples=5e4, 
+                          n_samples=5e3, 
                           delay=800, 
                           transient=900, 
                           offset=2000, 
