@@ -564,6 +564,48 @@ def scoreSpurious(A, A_obs, n_samples=1e4, delay=20, transient=500, offset=250, 
     return score
 
 
+def scanMissing(A, n_samples, delay, transient, offset):
+    """
+    Scan a range of p and compute the AUC for missing interactions
+    """
+    hyper = (n_samples, delay, transient)
+
+    p_vec = np.arange(0.05, 1, 0.05)
+    score = np.zeros((len(p_vec)))
+
+    print("Starting missing interaction scan")
+    for i in range(len(p_vec)):
+        p = p_vec[i]
+        # Corrupt the adjacency matrix
+        A_obs = corruptAdjacencyMatrix(A, p=p, mode='missing')
+        # Score
+        auc = scoreMissing(A, A_obs, *hyper, offset=offset)
+        score[0] = auc
+
+    return score
+
+
+def scanSpurious(A, n_samples, delay, transient, offset):
+    """
+    Scan a range of p and compute the AUC for spurious interactions
+    """
+    hyper = (n_samples, delay, transient)
+
+    p_vec = np.arange(0.05, 1, 0.05)
+    score = np.zeros((len(p_vec)))
+
+    print("Starting missing interaction scan")
+    for i in range(len(p_vec)):
+        p = p_vec[i]
+        # Corrupt the adjacency matrix
+        A_obs = corruptAdjacencyMatrix(A, p=p, mode='spurious')
+        # Score
+        auc = scoreSpurious(A, A_obs, *hyper, offset=offset)
+        score[0] = auc
+
+    return score
+
+
 # =====================================================================
 #                About Network Reconstruction
 # =====================================================================
@@ -676,6 +718,30 @@ def studyNetworkReconstructon(G, log_path, n_samples, delay, transient, offset, 
         pickle.dump(results, file)
 
     return results
+
+
+def scanNetworkReliability(A, n_samples, delay, transient, offset):
+    """
+    Scan a range of p and compute the score log(R_N_True/R_N_Obs)
+    """
+    hyper = (n_samples, delay, transient)
+
+    p_vec = np.arange(0.05, 0.55, 0.05)
+    score = np.zeros((len(p_vec)))
+
+    print("Starting network reliability scan")
+    for i in tqdm(range(len(p_vec))):
+        p = p_vec[i]
+        # Corrupt the adjacency matrix
+        A_obs = corruptAdjacencyMatrix(A, p=p, mode='both')
+        # Network reliability of the observed network
+        R_N_obs = getNetworkReliability(A_obs, A_obs, *generatePartitionsSet(A_obs, *hyper), offset=offset)
+        # Network reliability of the true network
+        R_N = getNetworkReliability(A, A_obs, *generatePartitionsSet(A_obs, *hyper), offset=offset)
+        # Compute the score
+        score[i] = np.log10(R_N/R_N_obs)
+
+    return score
 
 
 
