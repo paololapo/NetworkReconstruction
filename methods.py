@@ -574,7 +574,7 @@ def scanMissing(A, n_samples, delay, transient, offset):
     score = np.zeros((len(p_vec)))
 
     print("Starting missing interaction scan")
-    for i in range(len(p_vec)):
+    for i in tqdm(range(len(p_vec))):
         p = p_vec[i]
         # Corrupt the adjacency matrix
         A_obs = corruptAdjacencyMatrix(A, p=p, mode='missing')
@@ -595,7 +595,7 @@ def scanSpurious(A, n_samples, delay, transient, offset):
     score = np.zeros((len(p_vec)))
 
     print("Starting missing interaction scan")
-    for i in range(len(p_vec)):
+    for i in tqdm(range(len(p_vec))):
         p = p_vec[i]
         # Corrupt the adjacency matrix
         A_obs = corruptAdjacencyMatrix(A, p=p, mode='spurious')
