@@ -8,6 +8,7 @@ from sklearn.metrics import normalized_mutual_info_score
 from tqdm import tqdm
 import multiprocessing
 from time import time
+from datetime import datetime
 import pickle
 
 
@@ -610,7 +611,7 @@ def scanSpurious(A, n_samples, delay, transient, offset):
 #                About Network Reconstruction
 # =====================================================================
 
-def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=False, A=None):
+def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=False, A=None, full_output=False):
     """
     Reconstruct the network from the observed adjacency matrix A_obs
     """
@@ -623,9 +624,14 @@ def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=Fa
     # Initialize the current adjacency matrix
     A_cur = A_obs.copy()
 
+    proposed = []
+    accepted = []
+
     if verbose: print("Starting network reconstruction...")
     for j in range(5): # This is the maximum number of iterations
-        if verbose: print("Starting iteration ", j)
+        if verbose: print("Starting iteration ", j, " on ", datetime.now().strftime("%A: %H:%M"))
+
+        if j == 3: A_2 = A_cur.copy()
 
         # Compute the network reliability and the link reliability matrix
         R_N = getNetworkReliability(A_cur, A_obs, *generatePartitionsSet(A_obs, *hyper), offset=offset)
@@ -656,6 +662,7 @@ def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=Fa
             if verbose:
                 missing_after, spurious_after = compareAdjacencyMatrices(A, A_temp)
                 print("Proposed (missing, spurious): (", len(missing_before), ", ", len(spurious_before), ") -> (", len(missing_after), ", ", len(spurious_after), ")")
+                proposed.append(2*len(missing_after))
 
             # Compute the network reliability with the new adjacency matrix
             R_N_temp = getNetworkReliability(A_temp, A_obs, *generatePartitionsSet(A_obs, *hyper), offset=offset)
@@ -663,6 +670,7 @@ def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=Fa
             # If the network reliability increases, update the adjacency matrix
             if R_N_temp > R_N:
                 if verbose: print("Network accepted \n")
+                accepted.append(1)
                 A_cur = A_temp
                 R_N = R_N_temp
                 miss_update = 0
@@ -670,13 +678,17 @@ def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=Fa
             else:
                 miss_update += 1
                 if verbose: print("Network rejected")
+                accepted.append(0)
                 if miss_update > 4:
                     break
                 
         if not done_update:
             if verbose: print("No further update possible")
             break
-        
+
+    if j < 3: A_2 = None
+
+    if full_output: return A_cur, A_2, proposed, accepted
     return A_cur
 
 
@@ -687,7 +699,7 @@ def studyNetworkReconstructon(G, log_path, n_samples, delay, transient, offset, 
     A = nx.adjacency_matrix(G).todense()
     A = (A > 0).astype(int)
 
-    p_list = [0.3, 0.1, 0.2, 0.4, 0.5]
+    p_list = [0.1, 0.15, 0.20, 0.25, 0.30, 0.35, 0.4]
     
     results = {}
     for p in p_list:
@@ -695,23 +707,28 @@ def studyNetworkReconstructon(G, log_path, n_samples, delay, transient, offset, 
 
         # Generate the observed adjacency matrix
         A_obs = corruptAdjacencyMatrix(A, p=p, mode='both')
-        errors_obs = 2*len(compareAdjacencyMatrices(A, A_obs))
+        errors_obs = 2*len(compareAdjacencyMatrices(A, A_obs)[0])
         
         # Reconstruct the network
         start_time = time()
-        A_recon = networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose, A)
+        A_recon, A_2, proposed, accepted = networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose, A, full_output=True)
         elapsed_time = time() - start_time
-        errors_recon = 2*len(compareAdjacencyMatrices(A, A_recon))
+        errors_recon = 2*len(compareAdjacencyMatrices(A, A_recon)[0])
 
         # Results
         partial_results = {
             "A_obs": A_obs,
             "A_recon": A_recon,
+            "A_2": A_2,
             "errors_obs": errors_obs,
             "errors_recon": errors_recon,
-            "elapsed_time": elapsed_time
+            "elapsed_time": elapsed_time,
+            "hist_proposed": proposed, 
+            "hist_accepted": accepted
         }
         results[p] = partial_results
+
+    results["p-list"] = p_list
 
     # Save the results as a pickle
     with open(log_path, "wb") as file:
