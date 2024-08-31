@@ -15,19 +15,19 @@ from datetime import datetime
 from methods import *
 
 # Florentine Families Network
-G = nx.florentine_families_graph().to_undirected()
-print("Florentine Families Network")
-studyNetworkReconstructon(G, log_path="./logs/florentine_families.pkl",
-                         n_samples=1e4, 
-                         delay=50, 
-                         transient=100, 
-                         offset=120, 
-                         verbose=True)
+#G = nx.florentine_families_graph().to_undirected()
+#print("Florentine Families Network")
+#studyNetworkReconstructon(G, log_path="./logs/florentine_families.pkl",
+#                         n_samples=1e4, 
+#                         delay=50, 
+#                         transient=100, 
+#                         offset=120, 
+#                        verbose=True)
 
 # Karate Club Network
 G = nx.karate_club_graph().to_undirected()
 print("\n Karate Club Network")
-studyNetworkReconstructon(G, log_path="./logs/karate_club.pkl",
+studyNetworkReconstructon(G, log_path="./logs/netRec_karate_club.pkl",
                           n_samples=1e4, 
                           delay=400, 
                           transient=500, 
@@ -37,7 +37,7 @@ studyNetworkReconstructon(G, log_path="./logs/karate_club.pkl",
 # Dolphins Network
 G = nx.read_gml("dolphins.gml").to_undirected()
 print("\n Dolphins Network")
-studyNetworkReconstructon(G, log_path="./logs/dolphins.pkl", 
+studyNetworkReconstructon(G, log_path="./logs/netRec_dolphins.pkl", 
                           n_samples=5e3, 
                           delay=800, 
                           transient=900, 
