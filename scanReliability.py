@@ -33,7 +33,7 @@ G = nx.florentine_families_graph().to_undirected()
 print("Florentine Families Network")
 scanWrapper(G, log_path="./logs/scan_florentine_families.pkl", 
             n_samples=1e4, 
-            delay=50, 
+            delay=100, 
             transient=100, 
             offset=120)
 
