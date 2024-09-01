@@ -581,7 +581,7 @@ def scanMissing(A, n_samples, delay, transient, offset):
         A_obs = corruptAdjacencyMatrix(A, p=p, mode='missing')
         # Score
         auc = scoreMissing(A, A_obs, *hyper, offset=offset)
-        score[0] = auc
+        score[i] = auc
 
     return score
 
@@ -602,7 +602,7 @@ def scanSpurious(A, n_samples, delay, transient, offset):
         A_obs = corruptAdjacencyMatrix(A, p=p, mode='spurious')
         # Score
         auc = scoreSpurious(A, A_obs, *hyper, offset=offset)
-        score[0] = auc
+        score[i] = auc
 
     return score
 
