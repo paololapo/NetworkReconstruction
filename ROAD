@@ -4,7 +4,7 @@ OBJECTIVES
 
 STEPS AND FUNCTIONS
 - function to currupt the adjency matrix (and see how varyig p changes the benchmarks)
-- function to from graph to adjency matrix or edge list and viceversa
+- function to from graph to adjency matrix and edge list and viceversa
 - function from graph to feature (select features)
 - function to benchmark the performances (score, AUC, times existing link has output higher than non existing link)
 - function training, input(edge list, features), output(loss)
