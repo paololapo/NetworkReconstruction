@@ -8,3 +8,4 @@ STEPS AND FUNCTIONS
 - function from graph to feature (select features)
 - function to benchmark the performances (score, AUC, times existing link has output higher than non existing link)
 - function training, input(edge list, features), output(loss)
+- function from k edges, k non edges and give out a mix (cat) of those two
