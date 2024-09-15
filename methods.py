@@ -699,7 +699,7 @@ def studyNetworkReconstructon(G, log_path, n_samples, delay, transient, offset, 
     A = nx.adjacency_matrix(G).todense()
     A = (A > 0).astype(int)
 
-    p_list = [0.1, 0.15, 0.20, 0.25, 0.30, 0.35, 0.4]
+    p_list = [0.1, 0.15, 0.20, 0.25, 0.30]
     
     results = {}
     for p in p_list:
@@ -766,7 +766,7 @@ def scanNetworkReliability(A, n_samples, delay, transient, offset):
 #                About Visualization and Plotting
 # =====================================================================
 
-def plotGraphsComparison(A, A_obs, A_tilde):
+def plotGraphsComparison(A, A_obs, A_tilde, titles=["Original", "Observed", "Reconstructed"], fontsize=16):
     """
     Plot the comparison between the original, observed and reconstructed graphs
     """
@@ -852,17 +852,17 @@ def plotGraphsComparison(A, A_obs, A_tilde):
     
     fig, ax = plt.subplots(1, 3, figsize=(15, 6))
     # Original network
-    ax[0].set_title("Original network")
+    ax[0].set_title(titles[0], fontsize=fontsize)
     nx.draw(G, ax=ax[0], pos=layout, with_labels=False, 
             node_color='skyblue', node_size=(300+2000*bet), edgecolors='black', linewidths=1,
             edge_color='gray')
     
     # Observed network
-    ax[1].set_title("Observed network")
+    ax[1].set_title(titles[1], fontsize=fontsize)
     plotDiffGraph(A, A_obs, ax[1])
 
     # Reconstructed network
-    ax[2].set_title("Reconstructed network")
+    ax[2].set_title(titles[2], fontsize=fontsize)
     plotDiffGraph(A, A_tilde, ax[2])
 
     fig.tight_layout()

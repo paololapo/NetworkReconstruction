@@ -10,3 +10,6 @@ __pycache__/
 # Other common files
 .env
 *.DS_Store
+
+# Images
+*.png
