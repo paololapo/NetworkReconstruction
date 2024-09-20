@@ -13,3 +13,6 @@ __pycache__/
 
 # Images
 *.png
+
+# Last runs
+logs/quickdesperate*

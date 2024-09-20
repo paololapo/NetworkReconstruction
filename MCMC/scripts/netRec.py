@@ -12,7 +12,7 @@ import pickle
 from pprint import pprint
 from datetime import datetime
 
-from methods import *
+from MCMC.methods import *
 
 
 def networkReconstruction(A_obs, n_samples, delay, transient, offset, verbose=False, A=None, full_output=False):

@@ -11,7 +11,7 @@ from time import time
 import pickle
 from pprint import pprint
 
-from methods import *
+from MCMC.methods import *
 
 
 def scanWrapper(G, log_path, n_samples, delay, transient, offset):
