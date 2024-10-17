@@ -15,4 +15,7 @@ __pycache__/
 *.png
 
 # Last runs
-logs/quickdesperate*
+MCMC/logs/quickdesperate*
+
+# Ignore planetoid files
+GNN/nets
