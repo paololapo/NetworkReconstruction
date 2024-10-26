@@ -1,0 +1,27 @@
+// GCN Trainer Architecture
+digraph {
+	rankdir=TB size="3,8"
+	node [fontcolor=black fontsize=10 height=0.5 shape=box style=filled]
+	A [label="Input Data
+(Features + Edge Index)" fillcolor="#B2EBF2"]
+	B [label="Encoder Layer 1
+(GCNConv + BatchNorm + ReLU)" fillcolor="#FFE0B2"]
+	C [label="Encoder Layer 2
+(GCNConv + BatchNorm)" fillcolor="#FFE0B2"]
+	D [label="Latent Representations
+(z)" fillcolor="#FFCCBC" shape=ellipse]
+	E [label="Decoder
+(Dot Product)" fillcolor="#C8E6C9"]
+	F [label="Loss Calculation
+(Cross Entropy Loss)" fillcolor="#FFAB91"]
+	G [label="Performance Metrics
+(Accuracy + AUC)" fillcolor="#D1C4E9"]
+	A -> B [label="Input Data"]
+	B -> C [label=Output]
+	C -> D [label="Latent Output"]
+	D -> E [label=Decode]
+	E -> F [label="Compute Loss"]
+	F -> G [label="Evaluate Performance"]
+	fontcolor=black fontsize=14 label="GCN Trainer Architecture"
+	labeljust=c labelloc=t
+}
