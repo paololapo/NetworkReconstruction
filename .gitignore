@@ -19,3 +19,6 @@ MCMC/logs/quickdesperate*
 
 # Ignore planetoid files
 GNN/nets
+
+# Ignore temp images
+GNN/files/images
