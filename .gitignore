@@ -11,9 +11,6 @@ __pycache__/
 .env
 *.DS_Store
 
-# Images
-*.png
-
 # Last runs
 MCMC/logs/quickdesperate*
 
