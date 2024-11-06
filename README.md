@@ -3,7 +3,7 @@ This repository contains two projects dealing with complex networks and link pre
 * [**MCMC:**](https://github.com/paololapo/NetworkReconstruction/tree/main/MCMC) Bayesian framework to identify missing and spurious interactions and reconstruct a partially corrupted network.
 * [**GNN:**](https://github.com/paololapo/NetworkReconstruction/tree/main/GNN)  deep-learning architecture to infer the full structure of a partially observed graph.
 
-**Authors' contributions:** [Paolo Lapo Cerni](https://github.com/paololapo): MCMC, GNN; [Lorenzo Vigorelli](https://github.com/LorenzoVigorelli) GNN.
+**Authors' contributions:** [Paolo Lapo Cerni](https://github.com/paololapo): MCMC, GNN; [Lorenzo Vigorelli](https://github.com/LorenzoVigorelli): GNN.
 
 ## Bayesian link reliability (MCMC)
 Observed networks often come with missing and spurious interactions, i.e. they are corrupted. In this work, we reviewed a Bayesian framework to assess the *reliability* of a link. Such metric is defined as an ensemble average over network instances originating from the stochastic block model. This involves sampling over such space using the Metropolis algorithm (Monte Carlo Markov Chain).  
