@@ -1,5 +1,5 @@
 # Graph Neural Networks
-The files in this folder contain the analysis of graph neural networks. The full explanation can be found in the report in the main folder, but here we show the diagrams of the tested autoencoder architectures. <br>
+The files in this folder contain the analysis of graph neural networks. The full explanation can be found in the report in the main folder, but here we show the diagrams of the tested architectures. <br>
 * **Standard Graph Convolutional Networks (GCN)**
 <p align="center">
 <img src="./modelsImages/GCN.png" alt="schematics" width="200" height="300">
